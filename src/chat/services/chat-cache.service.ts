@@ -25,9 +25,10 @@ export class ChatCacheService {
     return `chat:title:${userId}:${topicId}`;
   }
 
-  private getCurrentTopicKey(userId: number): string {
-    return `chat:topic:last:${userId}`;
-  }
+  // 移除活跃话题相关方法
+  // private getCurrentTopicKey(userId: number): string {
+  //   return `chat:topic:last:${userId}`;
+  // }
 
   async addMessageToHistory(
     userId: number,
@@ -116,33 +117,34 @@ export class ChatCacheService {
     }
   }
 
-  async setCurrentTopic(userId: number, topicId: number): Promise<void> {
-    try {
-      const key = this.getCurrentTopicKey(userId);
-      await this.redisService.set(key, topicId.toString(), 24 * 60 * 60); // 1天过期
-    } catch (error) {
-      this.logger.error('Failed to set current topic', error);
-    }
-  }
+  // 移除活跃话题相关方法
+  // async setCurrentTopic(userId: number, topicId: number): Promise<void> {
+  //   try {
+  //     const key = this.getCurrentTopicKey(userId);
+  //     await this.redisService.set(key, topicId.toString(), 24 * 60 * 60); // 1天过期
+  //   } catch (error) {
+  //     this.logger.error('Failed to set current topic', error);
+  //   }
+  // }
 
-  async getCurrentTopic(userId: number): Promise<number | null> {
-    try {
-      const key = this.getCurrentTopicKey(userId);
-      const topicId = await this.redisService.get<string>(key);
-      return topicId ? parseInt(topicId) : null;
-    } catch (error) {
-      this.logger.error('Failed to get current topic', error);
-      return null;
-    }
-  }
+  // async getCurrentTopic(userId: number): Promise<number | null> {
+  //   try {
+  //     const key = this.getCurrentTopicKey(userId);
+  //     const topicId = await this.redisService.get<string>(key);
+  //     return topicId ? parseInt(topicId) : null;
+  //   } catch (error) {
+  //     this.logger.error('Failed to get current topic', error);
+  //   }
+  // }
 
   async clearUserHistory(userId: number): Promise<void> {
     try {
       const historyKey = this.getHistoryKey(userId);
-      const currentTopicKey = this.getCurrentTopicKey(userId);
+      // 移除活跃话题相关逻辑
+      // const currentTopicKey = this.getCurrentTopicKey(userId);
 
       await this.redisService.del(historyKey);
-      await this.redisService.del(currentTopicKey);
+      // await this.redisService.del(currentTopicKey);
     } catch (error) {
       this.logger.error('Failed to clear user history', error);
     }

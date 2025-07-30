@@ -6,21 +6,40 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface OpenAIConfig {
+  apiKey: string;
+  baseURL?: string;
+  model?: string;
+  embeddingModel?: string;
+}
+
 @Injectable()
 export class OpenAiService {
   private readonly logger = new Logger(OpenAiService.name);
 
-  private createOpenAI(apiKey: string): OpenAI {
-    return new OpenAI({
-      apiKey,
-    });
+  private createOpenAI(config: OpenAIConfig): OpenAI {
+    const openAIConfig: {
+      apiKey: string;
+      baseURL?: string;
+    } = {
+      apiKey: config.apiKey,
+    };
+
+    if (config.baseURL) {
+      openAIConfig.baseURL = config.baseURL;
+    }
+
+    return new OpenAI(openAIConfig);
   }
 
-  async generateEmbedding(text: string, apiKey: string): Promise<number[]> {
+  async generateEmbedding(
+    text: string,
+    config: OpenAIConfig,
+  ): Promise<number[]> {
     try {
-      const openai = this.createOpenAI(apiKey);
+      const openai = this.createOpenAI(config);
       const response = await openai.embeddings.create({
-        model: 'text-embedding-ada-002',
+        model: config.embeddingModel || 'text-embedding-ada-002',
         input: text,
       });
       return response.data[0].embedding;
@@ -32,17 +51,17 @@ export class OpenAiService {
 
   async generateResponse(
     messages: ChatMessage[],
-    apiKey: string,
+    config: OpenAIConfig,
     systemPrompt?: string,
   ): Promise<string> {
     try {
-      const openai = this.createOpenAI(apiKey);
+      const openai = this.createOpenAI(config);
       const chatMessages: ChatMessage[] = systemPrompt
         ? [{ role: 'system', content: systemPrompt }, ...messages]
         : messages;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: config.model || 'gpt-3.5-turbo',
         messages: chatMessages,
         max_tokens: 1000,
         temperature: 0.7,
@@ -57,17 +76,17 @@ export class OpenAiService {
 
   async generateTopicTitle(
     userMessages: string[],
-    apiKey: string,
+    config: OpenAIConfig,
   ): Promise<string> {
     try {
-      const openai = this.createOpenAI(apiKey);
+      const openai = this.createOpenAI(config);
       const prompt = `基于以下用户消息，生成一个简短的话题标题（不超过10个字）：
 ${userMessages.join('\n')}
 
 标题：`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: config.model || 'gpt-3.5-turbo',
         messages: [
           {
             role: 'system',

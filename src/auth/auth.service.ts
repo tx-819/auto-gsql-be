@@ -33,4 +33,14 @@ export class AuthService {
       access_token: this.jwtService.sign(payload),
     };
   }
+
+  validateToken(user: { username: string; userId: number }) {
+    return {
+      valid: true,
+      user: {
+        id: user.userId,
+        username: user.username,
+      },
+    };
+  }
 }

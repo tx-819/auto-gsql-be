@@ -1,5 +1,59 @@
 # 项目更新记录
 
+## 2024-12-19 - 支持自定义AI服务提供商
+
+### 架构调整
+
+- ✅ 修改OpenAiService支持自定义baseURL配置
+- ✅ 更新ChatService接口添加baseURL参数
+- ✅ 修改ChatController接收客户端baseURL配置
+- ✅ 支持DeepSeek等兼容OpenAI API的服务提供商
+- ✅ 支持客户端传入模型名称配置
+- ✅ 新增Token验证接口
+
+### 技术变更
+
+- OpenAiService新增OpenAIConfig接口：
+  - `apiKey: string` - API密钥
+  - `baseURL?: string` - 自定义API基础URL
+  - `model?: string` - 对话模型名称
+  - `embeddingModel?: string` - 向量嵌入模型名称
+- 所有OpenAI相关方法签名更新：
+  - `generateEmbedding(text, config)`
+  - `generateResponse(messages, config, systemPrompt?)`
+  - `generateTopicTitle(userMessages, config)`
+- SendMessageDto和SendMessageRequestDto接口添加model和embeddingModel字段
+- API请求体格式支持模型配置参数
+- 新增`GET /auth/validate`接口用于验证JWT Token有效性
+
+### 使用示例
+
+```json
+{
+  "content": "用户消息",
+  "apiKey": "your-api-key",
+  "baseURL": "https://api.deepseek.com/v1",
+  "model": "deepseek-chat",
+  "embeddingModel": "deepseek-embedding"
+}
+```
+
+### 支持的模型示例
+
+**OpenAI模型**：
+
+- 对话：`gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview`
+- 嵌入：`text-embedding-ada-002`, `text-embedding-3-small`
+
+**DeepSeek模型**：
+
+- 对话：`deepseek-chat`, `deepseek-coder`
+- 嵌入：`deepseek-embedding`
+
+**其他兼容OpenAI API的服务商**：
+
+- 根据各服务商提供的模型名称配置
+
 ## 2024-12-19 - 支持客户端传入OpenAI API Key
 
 ### 架构调整

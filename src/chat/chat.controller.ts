@@ -21,6 +21,9 @@ export class SendMessageRequestDto {
   content: string;
   topicId?: number;
   apiKey: string;
+  baseURL?: string;
+  model?: string;
+  embeddingModel?: string;
 }
 
 @Controller('chat')
@@ -38,6 +41,9 @@ export class ChatController {
       content: dto.content,
       topicId: dto.topicId,
       apiKey: dto.apiKey,
+      baseURL: dto.baseURL,
+      model: dto.model,
+      embeddingModel: dto.embeddingModel,
     };
     return this.chatService.sendMessage(sendDto);
   }

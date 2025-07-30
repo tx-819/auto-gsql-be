@@ -12,6 +12,9 @@ export interface SendMessageDto {
   content: string;
   topicId?: number;
   apiKey: string;
+  baseURL?: string;
+  model?: string;
+  embeddingModel?: string;
 }
 
 export interface ChatResponse {
@@ -37,18 +40,20 @@ export class ChatService {
   ) {}
 
   async sendMessage(dto: SendMessageDto): Promise<ChatResponse> {
-    const { userId, content, topicId, apiKey } = dto;
+    const { userId, content, topicId, apiKey, baseURL, model, embeddingModel } =
+      dto;
+    const openAIConfig = { apiKey, baseURL, model, embeddingModel };
 
     // 1. 生成用户消息的向量
     const userVector = await this.openAiService.generateEmbedding(
       content,
-      apiKey,
+      openAIConfig,
     );
 
     // 2. 确定话题ID
     let finalTopicId = topicId;
     if (!finalTopicId) {
-      finalTopicId = await this.determineTopic(userId, content, userVector);
+      finalTopicId = await this.determineTopic(userId);
     }
 
     // 3. 保存用户消息
@@ -58,6 +63,9 @@ export class ChatService {
       role: MessageRole.USER,
       content,
       apiKey,
+      baseURL,
+      model,
+      embeddingModel,
     });
 
     // 4. 获取上下文
@@ -66,7 +74,7 @@ export class ChatService {
     // 5. 生成AI回复
     const aiResponse = await this.openAiService.generateResponse(
       context.map((msg) => ({ role: msg.role, content: msg.content })),
-      apiKey,
+      openAIConfig,
       '你是一个有用的AI助手，请根据上下文提供准确、有帮助的回答。',
     );
 
@@ -77,15 +85,22 @@ export class ChatService {
       role: MessageRole.ASSISTANT,
       content: aiResponse,
       apiKey,
+      baseURL,
+      model,
+      embeddingModel,
     });
 
     // 7. 生成话题标题（如果是新话题）
     let topicTitle: string | undefined;
     if (!topicId) {
-      topicTitle = await this.generateTopicTitle(finalTopicId, content, apiKey);
+      topicTitle = await this.generateTopicTitle(
+        finalTopicId,
+        content,
+        openAIConfig,
+      );
     }
 
-    // 8. 更新缓存
+    // 8. 更新缓存（移除活跃话题相关逻辑）
     await this.updateCache(userId, userMessage, assistantMessage);
 
     return {
@@ -96,48 +111,13 @@ export class ChatService {
     };
   }
 
-  private async determineTopic(
-    userId: number,
-    content: string,
-    vector: number[],
-  ): Promise<number> {
-    // 检查当前活跃话题
-    const currentTopicId = await this.chatCacheService.getCurrentTopic(userId);
-    if (currentTopicId) {
-      const currentTopic = await this.topicRepository.findOne({
-        where: { id: currentTopicId, status: TopicStatus.ACTIVE },
-      });
-      if (currentTopic) {
-        return currentTopicId;
-      }
-    }
-
-    // 搜索相似话题
-    const similarMessages = await this.vectorDbService.searchSimilarMessages(
-      vector,
-      userId,
-      5,
-      this.SIMILARITY_THRESHOLD,
-    );
-
-    if (similarMessages.length > 0) {
-      const topicId = similarMessages[0].payload.topicId;
-      const topic = await this.topicRepository.findOne({
-        where: { id: topicId, status: TopicStatus.ACTIVE },
-      });
-      if (topic) {
-        await this.chatCacheService.setCurrentTopic(userId, topicId);
-        return topicId;
-      }
-    }
-
-    // 创建新话题
+  private async determineTopic(userId: number): Promise<number> {
+    // 直接创建新话题
     const newTopic = this.topicRepository.create({
       userId,
       status: TopicStatus.ACTIVE,
     });
     const savedTopic = await this.topicRepository.save(newTopic);
-    await this.chatCacheService.setCurrentTopic(userId, savedTopic.id);
     return savedTopic.id;
   }
 
@@ -189,14 +169,23 @@ export class ChatService {
     role: MessageRole;
     content: string;
     apiKey: string;
+    baseURL?: string;
+    model?: string;
+    embeddingModel?: string;
   }): Promise<ChatMessage> {
     const message = this.messageRepository.create(data);
     const savedMessage = await this.messageRepository.save(message);
 
     // 保存到向量数据库
+    const openAIConfig = {
+      apiKey: data.apiKey,
+      baseURL: data.baseURL,
+      model: data.model,
+      embeddingModel: data.embeddingModel,
+    };
     const vector = await this.openAiService.generateEmbedding(
       data.content,
-      data.apiKey,
+      openAIConfig,
     );
     const vectorMessage: VectorMessage = {
       id: savedMessage.id.toString(),
@@ -217,11 +206,11 @@ export class ChatService {
   private async generateTopicTitle(
     topicId: number,
     userMessage: string,
-    apiKey: string,
+    openAIConfig: { apiKey: string; baseURL?: string },
   ): Promise<string> {
     const title = await this.openAiService.generateTopicTitle(
       [userMessage],
-      apiKey,
+      openAIConfig,
     );
 
     // 更新数据库
