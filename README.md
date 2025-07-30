@@ -21,41 +21,150 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# 多轮对话系统后端
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+基于NestJS构建的智能多轮对话系统，支持上下文记忆、话题聚合、自动标题生成等功能。
 
-## Project setup
+## 核心功能
+
+- 🤖 **多轮对话**: 支持上下文记忆的连续对话
+- 🏷️ **话题聚合**: 自动按相似度聚合对话到话题
+- 📝 **自动标题**: 为每个话题生成简短标题
+- 💾 **历史记录**: 持久化存储所有对话数据
+- 🔍 **向量检索**: 高效检索相关上下文
+
+## 技术栈
+
+- **后端框架**: NestJS (TypeScript)
+- **AI模型**: OpenAI GPT-3.5-turbo + text-embedding-ada-002
+- **缓存**: Redis (短期上下文、话题标题缓存)
+- **数据库**: MySQL (长期存储消息和话题)
+- **向量数据库**: Qdrant (向量存储与检索)
+
+## 快速开始
+
+### 1. 环境准备
 
 ```bash
-$ pnpm install
+# 克隆项目
+git clone <repository-url>
+cd auto-gsql-be
+
+# 安装依赖
+pnpm install
 ```
 
-## Compile and run the project
+### 2. 配置环境变量
+
+复制环境变量模板并配置：
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+cp .env.example .env
 ```
 
-## Run tests
+配置以下关键变量：
+
+- `OPENAI_API_KEY`: OpenAI API密钥
+- `DB_*`: MySQL数据库配置
+- `REDIS_*`: Redis配置
+- `QDRANT_URL`: Qdrant向量数据库地址
+
+### 3. 启动开发环境
 
 ```bash
-# unit tests
-$ pnpm run test
+# 使用脚本启动（推荐）
+./scripts/start-dev.sh
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+# 或手动启动
+docker-compose -f docker-compose.dev.yml up -d
+pnpm run start:dev
 ```
+
+### 4. API测试
+
+使用提供的HTTP测试文件测试API：
+
+```bash
+# 使用VS Code REST Client插件或Postman
+# 文件位置: test/chat-api.http
+```
+
+## API接口
+
+### 发送消息
+
+```http
+POST /chat/send
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
+
+{
+  "content": "用户消息内容",
+  "topicId": 123  // 可选，指定话题ID
+}
+```
+
+### 获取话题列表
+
+```http
+GET /chat/topics
+Authorization: Bearer <jwt-token>
+```
+
+### 获取话题消息
+
+```http
+GET /chat/topics/{topicId}/messages
+Authorization: Bearer <jwt-token>
+```
+
+### 归档话题
+
+```http
+PUT /chat/topics/{topicId}/archive
+Authorization: Bearer <jwt-token>
+```
+
+## 项目结构
+
+```
+src/
+├── chat/                    # 聊天模块
+│   ├── entities/           # 数据实体
+│   ├── services/           # 业务服务
+│   ├── chat.controller.ts  # 控制器
+│   └── chat.module.ts      # 模块定义
+├── auth/                   # 认证模块
+├── users/                  # 用户模块
+└── common/                 # 公共模块
+```
+
+## 开发
+
+```bash
+# 开发模式
+pnpm run start:dev
+
+# 构建
+pnpm run build
+
+# 测试
+pnpm run test
+pnpm run test:e2e
+
+# 代码格式化
+pnpm run format
+```
+
+## 部署
+
+1. 配置生产环境变量
+2. 构建项目: `pnpm run build`
+3. 启动生产服务: `pnpm run start:prod`
+
+## 文档
+
+详细功能说明请参考: [docs/CHAT_SYSTEM.md](docs/CHAT_SYSTEM.md)
 
 ## Deployment
 

@@ -1,0 +1,39 @@
+### 用户登录获取JWT Token
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+### 发送消息（新话题）
+POST http://localhost:3000/chat/send
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "content": "你好，我想了解一下人工智能的发展历史"
+}
+
+### 发送消息（继续当前话题）
+POST http://localhost:3000/chat/send
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "content": "能详细说说深度学习的发展吗？",
+  "topicId": 1
+}
+
+### 获取话题列表
+GET http://localhost:3000/chat/topics
+Authorization: Bearer {{authToken}}
+
+### 获取话题消息
+GET http://localhost:3000/chat/topics/1/messages
+Authorization: Bearer {{authToken}}
+
+### 归档话题
+PUT http://localhost:3000/chat/topics/1/archive
+Authorization: Bearer {{authToken}} 
