@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CacheModule } from '@nestjs/cache-manager';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import * as redisStore from 'cache-manager-redis-store';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TransformInterceptor } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { RedisService } from './common/services/redis.service';
 
 @Module({
   imports: [
@@ -27,12 +30,25 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
       }),
       inject: [ConfigService],
     }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: (configService: ConfigService) => ({
+        store: redisStore,
+        host: configService.get('REDIS_HOST'),
+        port: configService.get('REDIS_PORT'),
+        password: configService.get('REDIS_PASSWORD') || undefined,
+        db: configService.get('REDIS_DB'),
+        ttl: 60 * 60 * 24, // 默认缓存24小时
+      }),
+      inject: [ConfigService],
+    }),
     AuthModule,
     UsersModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    RedisService,
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
@@ -42,5 +58,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
       useClass: HttpExceptionFilter,
     },
   ],
+  exports: [RedisService],
 })
 export class AppModule {}
