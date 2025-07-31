@@ -10,7 +10,6 @@ export interface OpenAIConfig {
   apiKey: string;
   baseURL?: string;
   model?: string;
-  embeddingModel?: string;
 }
 
 @Injectable()
@@ -30,23 +29,6 @@ export class OpenAiService {
     }
 
     return new OpenAI(openAIConfig);
-  }
-
-  async generateEmbedding(
-    text: string,
-    config: OpenAIConfig,
-  ): Promise<number[]> {
-    try {
-      const openai = this.createOpenAI(config);
-      const response = await openai.embeddings.create({
-        model: config.embeddingModel || 'text-embedding-ada-002',
-        input: text,
-      });
-      return response.data[0].embedding;
-    } catch (error) {
-      this.logger.error('Failed to generate embedding', error);
-      throw error;
-    }
   }
 
   async generateResponse(

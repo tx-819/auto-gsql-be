@@ -8,6 +8,7 @@ import { ChatCacheService } from './services/chat-cache.service';
 import { ChatTopic } from './entities/chat-topic.entity';
 import { ChatMessage } from './entities/chat-message.entity';
 import { RedisService } from '../common/services/redis.service';
+import { EmbeddingService } from './services/embedding.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ChatTopic, ChatMessage])],
@@ -18,6 +19,7 @@ import { RedisService } from '../common/services/redis.service';
     OpenAiService,
     ChatCacheService,
     RedisService,
+    EmbeddingService,
   ],
   exports: [ChatService],
 })

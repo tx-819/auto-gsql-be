@@ -23,7 +23,11 @@ export class SendMessageRequestDto {
   apiKey: string;
   baseURL?: string;
   model?: string;
-  embeddingModel?: string;
+}
+
+interface AuthenticatedUser {
+  id: number;
+  username: string;
 }
 
 @Controller('chat')
@@ -33,7 +37,7 @@ export class ChatController {
 
   @Post('send')
   async sendMessage(
-    @Request() req: { user: { username: string; id: number } },
+    @Request() req: { user: AuthenticatedUser },
     @Body() dto: SendMessageRequestDto,
   ): Promise<ChatResponse> {
     const sendDto: SendMessageDto = {
@@ -43,21 +47,20 @@ export class ChatController {
       apiKey: dto.apiKey,
       baseURL: dto.baseURL,
       model: dto.model,
-      embeddingModel: dto.embeddingModel,
     };
     return this.chatService.sendMessage(sendDto);
   }
 
   @Get('topics')
   async getTopics(
-    @Request() req: { user: { username: string; id: number } },
+    @Request() req: { user: AuthenticatedUser },
   ): Promise<ChatTopic[]> {
     return this.chatService.getTopics(req.user.id);
   }
 
   @Get('topics/:topicId/messages')
   async getTopicMessages(
-    @Request() req: { user: { username: string; id: number } },
+    @Request() req: { user: AuthenticatedUser },
     @Param('topicId') topicId: number,
   ): Promise<ChatMessage[]> {
     return this.chatService.getTopicMessages(topicId, req.user.id);
@@ -65,7 +68,7 @@ export class ChatController {
 
   @Put('topics/:topicId/archive')
   async archiveTopic(
-    @Request() req: { user: { username: string; id: number } },
+    @Request() req: { user: AuthenticatedUser },
     @Param('topicId') topicId: number,
   ): Promise<{ success: boolean }> {
     await this.chatService.archiveTopic(topicId, req.user.id);

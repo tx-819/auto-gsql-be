@@ -1,0 +1,90 @@
+### 测试不同的嵌入实现方式
+
+### 1. 测试本地嵌入服务
+POST http://localhost:8000/embed
+Content-Type: application/json
+
+{
+  "text": "你好，这是一个测试文本",
+  "model_name": "BAAI/bge-large-zh-v1.5"
+}
+
+### 2. 测试本地嵌入服务 - 英文模型
+POST http://localhost:8000/embed
+Content-Type: application/json
+
+{
+  "text": "Hello, this is a test text",
+  "model_name": "BAAI/bge-large-en-v1.5"
+}
+
+### 3. 测试本地嵌入服务 - 轻量模型
+POST http://localhost:8000/embed
+Content-Type: application/json
+
+{
+  "text": "这是一个轻量级测试",
+  "model_name": "BAAI/bge-small-zh-v1.5"
+}
+
+### 4. 批量嵌入测试
+POST http://localhost:8000/embed_batch
+Content-Type: application/json
+
+{
+  "texts": [
+    "第一个文本",
+    "第二个文本", 
+    "第三个文本"
+  ],
+  "model_name": "BAAI/bge-large-zh-v1.5"
+}
+
+### 5. 获取可用模型列表
+GET http://localhost:8000/models
+
+### 6. 健康检查
+GET http://localhost:8000/health
+
+### 7. 测试NestJS应用使用本地嵌入服务
+POST http://localhost:3000/chat/send
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "content": "你好，我想了解一下人工智能",
+  "apiKey": "{{openai_api_key}}",
+  "embeddingType": "local",
+  "embeddingConfig": {
+    "baseURL": "http://localhost:8000/embed",
+    "model": "BAAI/bge-large-zh-v1.5"
+  }
+}
+
+### 8. 测试使用百度文心嵌入
+POST http://localhost:3000/chat/send
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "content": "你好，我想了解一下人工智能",
+  "apiKey": "{{openai_api_key}}",
+  "embeddingType": "baidu",
+  "embeddingConfig": {
+    "accessToken": "{{baidu_access_token}}"
+  }
+}
+
+### 9. 测试使用阿里云通义千问嵌入
+POST http://localhost:3000/chat/send
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "content": "你好，我想了解一下人工智能",
+  "apiKey": "{{openai_api_key}}",
+  "embeddingType": "ali",
+  "embeddingConfig": {
+    "apiKey": "{{ali_api_key}}"
+  }
+} 

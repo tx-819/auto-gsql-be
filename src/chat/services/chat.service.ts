@@ -6,6 +6,7 @@ import { ChatMessage, MessageRole } from '../entities/chat-message.entity';
 import { VectorDbService, VectorMessage } from './vector-db.service';
 import { OpenAiService, ChatMessage as OpenAiMessage } from './openai.service';
 import { ChatCacheService, CachedMessage } from './chat-cache.service';
+import { EmbeddingService } from './embedding.service';
 
 export interface SendMessageDto {
   userId: number;
@@ -14,7 +15,6 @@ export interface SendMessageDto {
   apiKey: string;
   baseURL?: string;
   model?: string;
-  embeddingModel?: string;
 }
 
 export interface ChatResponse {
@@ -37,23 +37,37 @@ export class ChatService {
     private vectorDbService: VectorDbService,
     private openAiService: OpenAiService,
     private chatCacheService: ChatCacheService,
+    private embeddingService: EmbeddingService,
   ) {}
 
   async sendMessage(dto: SendMessageDto): Promise<ChatResponse> {
-    const { userId, content, topicId, apiKey, baseURL, model, embeddingModel } =
-      dto;
-    const openAIConfig = { apiKey, baseURL, model, embeddingModel };
+    const { userId, content, topicId, apiKey, baseURL, model } = dto;
+
+    // 添加详细的调试日志
+    this.logger.log(`sendMessage called with:`, {
+      userId,
+      content: content.substring(0, 50) + '...',
+      topicId,
+      hasApiKey: !!apiKey,
+      baseURL,
+      model,
+    });
 
     // 1. 生成用户消息的向量
-    const userVector = await this.openAiService.generateEmbedding(
-      content,
-      openAIConfig,
-    );
+    const userVector = await this.embeddingService.generateEmbedding(content, {
+      type: 'local',
+    });
 
     // 2. 确定话题ID
     let finalTopicId = topicId;
     if (!finalTopicId) {
+      this.logger.log(
+        `No topicId provided, creating new topic for user: ${userId}`,
+      );
       finalTopicId = await this.determineTopic(userId);
+      this.logger.log(`Created new topic with ID: ${finalTopicId}`);
+    } else {
+      this.logger.log(`Using existing topic ID: ${finalTopicId}`);
     }
 
     // 3. 保存用户消息
@@ -65,7 +79,6 @@ export class ChatService {
       apiKey,
       baseURL,
       model,
-      embeddingModel,
     });
 
     // 4. 获取上下文
@@ -74,7 +87,7 @@ export class ChatService {
     // 5. 生成AI回复
     const aiResponse = await this.openAiService.generateResponse(
       context.map((msg) => ({ role: msg.role, content: msg.content })),
-      openAIConfig,
+      { apiKey, baseURL, model },
       '你是一个有用的AI助手，请根据上下文提供准确、有帮助的回答。',
     );
 
@@ -87,17 +100,16 @@ export class ChatService {
       apiKey,
       baseURL,
       model,
-      embeddingModel,
     });
 
     // 7. 生成话题标题（如果是新话题）
     let topicTitle: string | undefined;
     if (!topicId) {
-      topicTitle = await this.generateTopicTitle(
-        finalTopicId,
-        content,
-        openAIConfig,
-      );
+      topicTitle = await this.generateTopicTitle(finalTopicId, content, {
+        apiKey,
+        baseURL,
+        model,
+      });
     }
 
     // 8. 更新缓存（移除活跃话题相关逻辑）
@@ -112,13 +124,42 @@ export class ChatService {
   }
 
   private async determineTopic(userId: number): Promise<number> {
-    // 直接创建新话题
-    const newTopic = this.topicRepository.create({
-      userId,
-      status: TopicStatus.ACTIVE,
-    });
-    const savedTopic = await this.topicRepository.save(newTopic);
-    return savedTopic.id;
+    this.logger.log(
+      `determineTopic called with userId: ${userId}, type: ${typeof userId}`,
+    );
+
+    try {
+      // 创建新话题，设置默认标题
+      const newTopic = this.topicRepository.create({
+        userId,
+        title: '新对话', // 添加默认标题
+        status: TopicStatus.ACTIVE,
+      });
+
+      this.logger.log(`Created topic entity:`, {
+        userId: newTopic.userId,
+        title: newTopic.title,
+        status: newTopic.status,
+      });
+
+      const savedTopic = await this.topicRepository.save(newTopic);
+      this.logger.log(
+        `Created new topic: ${savedTopic.id} for user: ${userId}`,
+      );
+
+      return savedTopic.id;
+    } catch (error) {
+      this.logger.error(`Failed to create topic for user ${userId}:`, error);
+      this.logger.error(`Error details:`, {
+        userId,
+        userIdType: typeof userId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      throw new Error(
+        `Failed to create new topic: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private async getContext(
@@ -144,9 +185,9 @@ export class ChatService {
     // 3. 合并上下文（去重）
     const allMessages = [...topicMessages];
     for (const similar of similarMessages) {
-      if (!allMessages.find((msg) => msg.id === parseInt(similar.id))) {
+      if (!allMessages.find((msg) => msg.id === similar.id)) {
         const message = await this.messageRepository.findOne({
-          where: { id: parseInt(similar.id) },
+          where: { id: similar.id },
         });
         if (message) {
           allMessages.push(message);
@@ -171,47 +212,60 @@ export class ChatService {
     apiKey: string;
     baseURL?: string;
     model?: string;
-    embeddingModel?: string;
   }): Promise<ChatMessage> {
-    const message = this.messageRepository.create(data);
-    const savedMessage = await this.messageRepository.save(message);
+    try {
+      const message = this.messageRepository.create(data);
+      const savedMessage = await this.messageRepository.save(message);
 
-    // 保存到向量数据库
-    const openAIConfig = {
-      apiKey: data.apiKey,
-      baseURL: data.baseURL,
-      model: data.model,
-      embeddingModel: data.embeddingModel,
-    };
-    const vector = await this.openAiService.generateEmbedding(
-      data.content,
-      openAIConfig,
-    );
-    const vectorMessage: VectorMessage = {
-      id: savedMessage.id.toString(),
-      vector,
-      payload: {
-        userId: data.userId,
-        topicId: data.topicId,
-        role: data.role,
-        content: data.content,
-        timestamp: savedMessage.createdAt.getTime(),
-      },
-    };
-    await this.vectorDbService.upsertMessage(vectorMessage);
+      this.logger.log(
+        `Saved message: ${savedMessage.id} for topic: ${data.topicId}`,
+      );
 
-    return savedMessage;
+      // 保存到向量数据库
+      const vector = await this.embeddingService.generateEmbedding(
+        data.content,
+        {
+          type: 'local',
+        },
+      );
+
+      const vectorMessage: VectorMessage = {
+        id: savedMessage.id,
+        vector,
+        payload: {
+          userId: data.userId,
+          topicId: data.topicId,
+          role: data.role,
+          content: data.content,
+          timestamp: savedMessage.createdAt.getTime(),
+        },
+      };
+
+      await this.vectorDbService.upsertMessage(vectorMessage);
+      this.logger.log(`Saved vector for message: ${savedMessage.id}`);
+
+      return savedMessage;
+    } catch (error) {
+      this.logger.error(
+        `Failed to save message for topic ${data.topicId}:`,
+        error,
+      );
+      throw new Error(
+        `Failed to save message: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private async generateTopicTitle(
     topicId: number,
     userMessage: string,
-    openAIConfig: { apiKey: string; baseURL?: string },
+    openAIConfig: { apiKey: string; baseURL?: string; model?: string },
   ): Promise<string> {
-    const title = await this.openAiService.generateTopicTitle(
-      [userMessage],
-      openAIConfig,
-    );
+    const title = await this.openAiService.generateTopicTitle([userMessage], {
+      apiKey: openAIConfig.apiKey,
+      baseURL: openAIConfig.baseURL,
+      model: openAIConfig.model,
+    });
 
     // 更新数据库
     await this.topicRepository.update(topicId, { title });

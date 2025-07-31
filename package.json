@@ -8,7 +8,9 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start:docker": "bash scripts/start-dev.sh",
     "start": "nest start",
+    "start:embedding": "bash scripts/start-embedding-service.sh",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -17,7 +19,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "debug:embedding": "npx ts-node scripts/debug-embedding.ts",
+    "debug:database": "npx ts-node scripts/debug-database.ts"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.0.1",

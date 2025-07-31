@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
 
 export interface VectorMessage {
-  id: string;
+  id: number;
   vector: number[];
   payload: {
     userId: number;
@@ -86,7 +86,7 @@ export class VectorDbService {
       });
 
       return result.map((point) => ({
-        id: point.id as string,
+        id: point.id as number,
         vector: point.vector as number[],
         payload: point.payload as VectorMessage['payload'],
       }));
