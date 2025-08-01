@@ -131,7 +131,7 @@ export class ChatService {
       });
     }
 
-    // 8. 更新缓存（移除活跃话题相关逻辑）
+    // 8. 更新缓存
     await this.updateCache(userId, userMessage, assistantMessage);
 
     return {
@@ -190,7 +190,7 @@ export class ChatService {
     const topicMessages = await this.messageRepository.find({
       where: { topicId, userId },
       order: { createdAt: 'ASC' },
-      take: 10,
+      take: 5,
     });
 
     // 2. 搜索相似的历史消息

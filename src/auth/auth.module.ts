@@ -15,7 +15,7 @@ import { LocalStrategy } from './local.strategy';
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
+        signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],
     }),
