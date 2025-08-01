@@ -23,6 +23,5 @@ CREATE TABLE IF NOT EXISTS `chat_message` (
   PRIMARY KEY (`id`),
   INDEX `idx_topic_id` (`topic_id`),
   INDEX `idx_user_id` (`user_id`),
-  INDEX `idx_created_at` (`created_at`),
-  CONSTRAINT `fk_chat_message_topic` FOREIGN KEY (`topic_id`) REFERENCES `chat_topic` (`id`) ON DELETE CASCADE
+  INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 

@@ -4,9 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
-import { ChatMessage } from './chat-message.entity';
 
 export enum TopicStatus {
   ACTIVE = 1,
@@ -32,7 +30,4 @@ export class ChatTopic {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-
-  @OneToMany(() => ChatMessage, (message) => message.topic)
-  messages: ChatMessage[];
 }

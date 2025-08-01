@@ -1,5 +1,81 @@
 # 项目更新记录
 
+## 2024-12-19 - 修复向量维度不匹配问题
+
+### 问题描述
+
+- ❌ Qdrant向量数据库出现维度不匹配错误
+- ❌ 错误信息：`Vector dimension error: expected dim: 1536, got 1024`
+- ❌ 原因：硬编码的向量维度与实际使用的嵌入模型不匹配
+
+### 解决方案
+
+- ✅ 修改VectorDbService支持动态向量维度配置
+- ✅ 添加向量维度验证和错误提示
+- ✅ 在ChatService初始化时自动检测并设置正确的向量维度
+- ✅ 创建Qdrant集合重建脚本解决现有数据问题
+
+### 技术变更
+
+- VectorDbService新增功能：
+  - `setVectorSize(size: number)` - 设置向量维度
+  - `getVectorSize(): number` - 获取当前向量维度
+  - 向量操作前自动验证维度匹配
+  - 支持从现有集合读取维度配置
+- ChatService新增初始化逻辑：
+  - 启动时自动检测嵌入模型维度
+  - 动态设置向量数据库维度配置
+- 新增脚本 `scripts/recreate-qdrant-collection.ts` 用于重建集合
+
+### 使用说明
+
+如果遇到维度不匹配问题，运行以下命令重建Qdrant集合：
+
+```bash
+npx ts-node scripts/recreate-qdrant-collection.ts
+```
+
+### 支持的嵌入模型维度
+
+- OpenAI text-embedding-ada-002: 1536维
+- OpenAI text-embedding-3-small: 1536维
+- 本地模型（如BAAI/bge-large-zh-v1.5）: 1024维
+- 其他模型根据实际输出维度自动适配
+
+## 2024-12-19 - 移除物理外键约束，只保留逻辑外键
+
+### 架构调整
+
+- ✅ 移除数据库物理外键约束
+- ✅ 移除TypeORM实体关联装饰器
+- ✅ 保留逻辑外键关系（通过索引）
+- ✅ 创建外键移除迁移脚本
+
+### 技术变更
+
+- 数据库迁移文件更新：
+  - 移除 `CONSTRAINT fk_chat_message_topic` 外键约束
+  - 保留 `topic_id` 字段的索引用于查询优化
+- 实体定义更新：
+  - 移除 `@OneToMany` 和 `@ManyToOne` 装饰器
+  - 移除 `@JoinColumn` 装饰器
+  - 保留基本的字段定义和索引
+- 新增迁移文件 `remove-foreign-keys.sql` 用于移除现有外键约束
+
+### 影响分析
+
+- 查询逻辑保持不变，仍通过 `topicId` 字段进行关联查询
+- 数据完整性由应用层逻辑保证
+- 提高数据库操作灵活性，避免外键约束带来的性能影响
+- 支持更灵活的数据操作和迁移策略
+
+### 文件修改
+
+- `src/database/migrations/create-chat-tables.sql` - 移除外键约束
+- `src/chat/entities/chat-topic.entity.ts` - 移除关联装饰器
+- `src/chat/entities/chat-message.entity.ts` - 移除关联装饰器
+- `src/database/migrations/remove-foreign-keys.sql` - 新增外键移除脚本
+
 ## 2024-12-19 - 支持自定义AI服务提供商
 
 ### 架构调整

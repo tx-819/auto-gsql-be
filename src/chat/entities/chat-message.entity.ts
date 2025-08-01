@@ -3,10 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
-import { ChatTopic } from './chat-topic.entity';
 
 export enum MessageRole {
   USER = 'user',
@@ -32,8 +29,4 @@ export class ChatMessage {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
-
-  @ManyToOne(() => ChatTopic, (topic) => topic.messages)
-  @JoinColumn({ name: 'topic_id' })
-  topic: ChatTopic;
 }

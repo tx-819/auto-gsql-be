@@ -38,7 +38,26 @@ export class ChatService {
     private openAiService: OpenAiService,
     private chatCacheService: ChatCacheService,
     private embeddingService: EmbeddingService,
-  ) {}
+  ) {
+    this.initializeVectorDimension();
+  }
+
+  private async initializeVectorDimension() {
+    try {
+      // 生成一个测试向量来获取维度
+      const testVector = await this.embeddingService.generateEmbedding('test', {
+        type: 'local',
+      });
+
+      // 设置向量数据库的维度
+      this.vectorDbService.setVectorSize(testVector.length);
+      this.logger.log(`Vector dimension initialized: ${testVector.length}`);
+    } catch (error) {
+      this.logger.error('Failed to initialize vector dimension', error);
+      // 使用默认维度
+      this.vectorDbService.setVectorSize(1536);
+    }
+  }
 
   async sendMessage(dto: SendMessageDto): Promise<ChatResponse> {
     const { userId, content, topicId, apiKey, baseURL, model } = dto;
