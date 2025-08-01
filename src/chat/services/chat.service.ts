@@ -1,10 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Observable } from 'rxjs';
 import { ChatTopic, TopicStatus } from '../entities/chat-topic.entity';
 import { ChatMessage, MessageRole } from '../entities/chat-message.entity';
 import { VectorDbService, VectorMessage } from './vector-db.service';
-import { OpenAiService, ChatMessage as OpenAiMessage } from './openai.service';
+import {
+  OpenAiService,
+  ChatMessage as OpenAiMessage,
+  StreamResponse,
+} from './openai.service';
 import { ChatCacheService, CachedMessage } from './chat-cache.service';
 import { EmbeddingService } from './embedding.service';
 
@@ -21,6 +26,14 @@ export interface ChatResponse {
   messageId: number;
   topicId: number;
   content: string;
+  topicTitle?: string;
+}
+
+export interface StreamChatResponse {
+  content: string;
+  done: boolean;
+  messageId?: number;
+  topicId?: number;
   topicTitle?: string;
 }
 
@@ -59,87 +72,123 @@ export class ChatService {
     }
   }
 
-  async sendMessage(dto: SendMessageDto): Promise<ChatResponse> {
+  sendMessage(dto: SendMessageDto): Observable<StreamChatResponse> {
+    return new Observable((subscriber) => {
+      this.processStreamMessage(dto, subscriber).catch((error) => {
+        this.logger.error('Error in stream message processing:', error);
+        subscriber.error(error);
+      });
+    });
+  }
+
+  private async processStreamMessage(
+    dto: SendMessageDto,
+    subscriber: {
+      next: (value: StreamChatResponse) => void;
+      error: (error: any) => void;
+      complete: () => void;
+    },
+  ): Promise<void> {
     const { userId, content, topicId, apiKey, baseURL, model } = dto;
 
-    // 添加详细的调试日志
-    this.logger.log(`sendMessage called with:`, {
-      userId,
-      content: content.substring(0, 50) + '...',
-      topicId,
-      hasApiKey: !!apiKey,
-      baseURL,
-      model,
-    });
-
-    // 1. 生成用户消息的向量
-    const userVector = await this.embeddingService.generateEmbedding(content, {
-      type: 'local',
-    });
-
-    // 2. 确定话题ID
-    let finalTopicId = topicId;
-    if (!finalTopicId) {
-      this.logger.log(
-        `No topicId provided, creating new topic for user: ${userId}`,
+    try {
+      // 1. 生成用户消息的向量
+      const userVector = await this.embeddingService.generateEmbedding(
+        content,
+        {
+          type: 'local',
+        },
       );
-      finalTopicId = await this.determineTopic(userId);
-      this.logger.log(`Created new topic with ID: ${finalTopicId}`);
-    } else {
-      this.logger.log(`Using existing topic ID: ${finalTopicId}`);
-    }
 
-    // 3. 保存用户消息
-    const userMessage = await this.saveMessage({
-      topicId: finalTopicId,
-      userId,
-      role: MessageRole.USER,
-      content,
-      apiKey,
-      baseURL,
-      model,
-    });
+      // 2. 确定话题ID
+      let finalTopicId = topicId;
+      if (!finalTopicId) {
+        finalTopicId = await this.determineTopic(userId);
+      }
 
-    // 4. 获取上下文
-    const context = await this.getContext(userId, finalTopicId, userVector);
-
-    // 5. 生成AI回复
-    const aiResponse = await this.openAiService.generateResponse(
-      context.map((msg) => ({ role: msg.role, content: msg.content })),
-      { apiKey, baseURL, model },
-      '你是一个有用的AI助手，请根据上下文提供准确、有帮助的回答。',
-    );
-
-    // 6. 保存AI回复
-    const assistantMessage = await this.saveMessage({
-      topicId: finalTopicId,
-      userId,
-      role: MessageRole.ASSISTANT,
-      content: aiResponse,
-      apiKey,
-      baseURL,
-      model,
-    });
-
-    // 7. 生成话题标题（如果是新话题）
-    let topicTitle: string | undefined;
-    if (!topicId) {
-      topicTitle = await this.generateTopicTitle(finalTopicId, content, {
+      // 3. 保存用户消息
+      const userMessage = await this.saveMessage({
+        topicId: finalTopicId,
+        userId,
+        role: MessageRole.USER,
+        content,
         apiKey,
         baseURL,
         model,
       });
+
+      // 4. 获取上下文
+      const context = await this.getContext(userId, finalTopicId, userVector);
+
+      // 5. 生成话题标题（如果是新话题）
+      let topicTitle: string | undefined;
+      if (!topicId) {
+        topicTitle = await this.generateTopicTitle(finalTopicId, content, {
+          apiKey,
+          baseURL,
+          model,
+        });
+      }
+
+      // 6. 流式生成AI回复
+      let fullContent = '';
+      const stream = this.openAiService.generateResponseStream(
+        context.map((msg) => ({ role: msg.role, content: msg.content })),
+        { apiKey, baseURL, model },
+        '你是一个有用的AI助手，请根据上下文提供准确、有帮助的回答。',
+      );
+
+      stream.subscribe({
+        next: (response: StreamResponse) => {
+          if (response.done) {
+            fullContent = response.content;
+          }
+          subscriber.next({
+            content: response.content,
+            done: response.done,
+            topicId: finalTopicId,
+            topicTitle: response.done ? topicTitle : undefined,
+          });
+        },
+        error: (error) => {
+          this.logger.error('Stream error:', error);
+          subscriber.error(error);
+        },
+        complete: () => {
+          // 7. 保存AI回复
+          this.saveMessage({
+            topicId: finalTopicId,
+            userId,
+            role: MessageRole.ASSISTANT,
+            content: fullContent,
+            apiKey,
+            baseURL,
+            model,
+          })
+            .then(async (assistantMessage) => {
+              // 8. 更新缓存
+              await this.updateCache(userId, userMessage, assistantMessage);
+
+              // 发送最终响应
+              subscriber.next({
+                content: '',
+                done: true,
+                messageId: assistantMessage.id,
+                topicId: finalTopicId,
+                topicTitle,
+              });
+              subscriber.complete();
+            })
+            .catch((error) => {
+              this.logger.error('Error saving assistant message:', error);
+              subscriber.error(error);
+            });
+        },
+      });
+    } catch (error) {
+      this.logger.error('Error in processStreamMessage:', error);
+      subscriber.error(error);
     }
-
-    // 8. 更新缓存
-    await this.updateCache(userId, userMessage, assistantMessage);
-
-    return {
-      messageId: assistantMessage.id,
-      topicId: finalTopicId,
-      content: aiResponse,
-      topicTitle,
-    };
   }
 
   private async determineTopic(userId: number): Promise<number> {

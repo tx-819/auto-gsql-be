@@ -7,12 +7,14 @@ import {
   Param,
   UseGuards,
   Request,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   ChatService,
   SendMessageDto,
-  ChatResponse,
+  StreamChatResponse,
 } from './services/chat.service';
 import { ChatTopic } from './entities/chat-topic.entity';
 import { ChatMessage } from './entities/chat-message.entity';
@@ -36,10 +38,11 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post('send')
-  async sendMessage(
+  sendMessage(
     @Request() req: { user: AuthenticatedUser },
     @Body() dto: SendMessageRequestDto,
-  ): Promise<ChatResponse> {
+    @Res() res: Response,
+  ): void {
     const sendDto: SendMessageDto = {
       userId: req.user.id,
       content: dto.content,
@@ -48,7 +51,34 @@ export class ChatController {
       baseURL: dto.baseURL,
       model: dto.model,
     };
-    return this.chatService.sendMessage(sendDto);
+
+    // 设置SSE头部
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control',
+    });
+
+    const stream = this.chatService.sendMessage(sendDto);
+
+    stream.subscribe({
+      next: (response: StreamChatResponse) => {
+        const data = JSON.stringify(response);
+        res.write(`data: ${data}\n\n`);
+      },
+      error: (error: Error) => {
+        const errorData = JSON.stringify({
+          error: error?.message || 'Unknown error',
+        });
+        res.write(`data: ${errorData}\n\n`);
+        res.end();
+      },
+      complete: () => {
+        res.end();
+      },
+    });
   }
 
   @Get('topics')

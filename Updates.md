@@ -242,3 +242,38 @@ env.example
 - 替换为官方包 `@qdrant/js-client-rest@1.15.0`
 - 更新导入语句：`import { QdrantClient } from '@qdrant/js-client-rest'`
 - 修复所有API调用方法名和参数
+
+## 2024-12-19 - 流式聊天功能
+
+### 新增功能
+
+- 添加了流式聊天API端点 `POST /chat/send/stream`
+- 支持Server-Sent Events (SSE)格式的实时流式响应
+- 实现了OpenAI流式API的集成
+
+### 技术实现
+
+- 在 `OpenAiService` 中添加了 `generateResponseStream` 方法
+- 在 `ChatService` 中添加了 `sendMessageStream` 方法
+- 在 `ChatController` 中添加了流式端点，支持SSE响应
+- 使用RxJS Observable处理流式数据
+
+### 接口变更
+
+- 新增流式接口：`POST /chat/send/stream`
+- 响应格式：Server-Sent Events
+- 支持实时流式内容传输
+
+### 文档更新
+
+- 更新了 `docs/CHAT_API.md` 文档
+- 添加了流式API的使用示例
+- 创建了测试文件 `test/chat-stream.http`
+
+### 文件变更
+
+- `src/chat/services/openai.service.ts` - 添加流式生成方法
+- `src/chat/services/chat.service.ts` - 添加流式处理逻辑
+- `src/chat/chat.controller.ts` - 添加流式端点
+- `docs/CHAT_API.md` - 更新API文档
+- `test/chat-stream.http` - 新增测试文件

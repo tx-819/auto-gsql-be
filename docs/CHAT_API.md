@@ -20,7 +20,7 @@ Authorization: Bearer <your-jwt-token>
 
 **接口地址**: `POST /chat/send`
 
-**功能描述**: 发送用户消息并获取AI回复
+**功能描述**: 发送用户消息并获取AI回复（同步响应）
 
 **请求参数**:
 
@@ -66,7 +66,39 @@ Authorization: Bearer <your-jwt-token>
 | content    | string | AI回复内容                 |
 | topicTitle | string | 话题标题（仅新话题时返回） |
 
-### 2. 获取话题列表
+### 2. 流式发送消息
+
+**接口地址**: `POST /chat/send/stream`
+
+**功能描述**: 发送用户消息并获取AI流式回复（Server-Sent Events）
+
+**请求参数**: 与同步发送消息接口相同
+
+**响应格式**: Server-Sent Events (SSE)
+
+**响应示例**:
+
+```
+data: {"content":"你好","done":false,"topicId":123}
+
+data: {"content":"！我是","done":false,"topicId":123}
+
+data: {"content":"一个AI助手","done":false,"topicId":123}
+
+data: {"content":"","done":true,"messageId":456,"topicId":123,"topicTitle":"新对话"}
+```
+
+**响应字段说明**:
+
+| 字段       | 类型    | 说明                                  |
+| ---------- | ------- | ------------------------------------- |
+| content    | string  | 流式内容片段                          |
+| done       | boolean | 是否为最后一个片段                    |
+| messageId  | number  | AI回复消息ID（仅在done=true时返回）   |
+| topicId    | number  | 话题ID                                |
+| topicTitle | string  | 话题标题（仅新话题且done=true时返回） |
+
+### 3. 获取话题列表
 
 **接口地址**: `GET /chat/topics`
 
@@ -108,7 +140,7 @@ Authorization: Bearer <your-jwt-token>
 | createdAt | string | 创建时间                   |
 | updatedAt | string | 更新时间                   |
 
-### 3. 获取话题消息
+### 4. 获取话题消息
 
 **接口地址**: `GET /chat/topics/{topicId}/messages`
 
@@ -154,7 +186,7 @@ Authorization: Bearer <your-jwt-token>
 | content   | string | 消息内容                              |
 | createdAt | string | 创建时间                              |
 
-### 4. 归档话题
+### 5. 归档话题
 
 **接口地址**: `PUT /chat/topics/{topicId}/archive`
 
@@ -231,7 +263,7 @@ Authorization: Bearer <your-jwt-token>
 ### JavaScript/TypeScript
 
 ```typescript
-// 发送消息
+// 发送消息（同步）
 const sendMessage = async (content: string, apiKey: string) => {
   const response = await fetch('/chat/send', {
     method: 'POST',
@@ -248,6 +280,48 @@ const sendMessage = async (content: string, apiKey: string) => {
   });
 
   return response.json();
+};
+
+// 流式发送消息
+const sendMessageStream = async (content: string, apiKey: string) => {
+  const response = await fetch('/chat/send/stream', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${jwtToken}`,
+    },
+    body: JSON.stringify({
+      content,
+      apiKey,
+      model: 'gpt-4',
+      baseURL: 'https://api.openai.com/v1',
+    }),
+  });
+
+  const reader = response.body?.getReader();
+  const decoder = new TextDecoder();
+
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = JSON.parse(line.slice(6));
+          console.log('Stream data:', data);
+
+          if (data.done) {
+            console.log('Stream completed');
+            break;
+          }
+        }
+      }
+    }
+  }
 };
 
 // 获取话题列表
@@ -276,7 +350,7 @@ const getTopicMessages = async (topicId: number) => {
 ### cURL示例
 
 ```bash
-# 发送消息
+# 发送消息（同步）
 curl -X POST http://localhost:3000/chat/send \
   -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
@@ -284,6 +358,16 @@ curl -X POST http://localhost:3000/chat/send \
     "content": "你好",
     "apiKey": "your-api-key"
   }'
+
+# 流式发送消息
+curl -X POST http://localhost:3000/chat/send/stream \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "你好",
+    "apiKey": "your-api-key"
+  }' \
+  --no-buffer
 
 # 获取话题列表
 curl -X GET http://localhost:3000/chat/topics \
