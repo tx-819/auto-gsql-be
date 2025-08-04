@@ -402,4 +402,31 @@ export class ChatService {
       { status: TopicStatus.ARCHIVED },
     );
   }
+
+  async deleteTopic(topicId: number, userId: number): Promise<void> {
+    // 验证话题是否存在且属于该用户
+    const topic = await this.topicRepository.findOne({
+      where: { id: topicId, userId },
+    });
+
+    if (!topic) {
+      throw new Error('Topic not found or access denied');
+    }
+
+    // 删除话题下的所有消息
+    await this.messageRepository.delete({ topicId, userId });
+
+    // 删除话题本身
+    await this.topicRepository.delete({ id: topicId, userId });
+
+    // 清理向量数据库中的相关数据
+    await this.vectorDbService.deleteTopicMessages(topicId);
+
+    // 清理缓存
+    await this.chatCacheService.clearTopicCache(userId, topicId);
+
+    this.logger.log(
+      `Deleted topic ${topicId} and all its messages for user ${userId}`,
+    );
+  }
 }

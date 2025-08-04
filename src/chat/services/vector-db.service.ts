@@ -157,6 +157,11 @@ export class VectorDbService {
     }
   }
 
+  // 删除话题消息的别名方法
+  async deleteTopicMessages(topicId: number): Promise<void> {
+    return this.deleteMessagesByTopic(topicId);
+  }
+
   // 获取当前向量维度
   getVectorSize(): number {
     return this.vectorSize;

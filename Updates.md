@@ -277,3 +277,46 @@ env.example
 - `src/chat/chat.controller.ts` - 添加流式端点
 - `docs/CHAT_API.md` - 更新API文档
 - `test/chat-stream.http` - 新增测试文件
+
+## 2024-12-19 - 新增删除话题功能
+
+### 新增功能
+
+- 实现了永久删除话题功能，包括删除话题及其所有相关消息
+- 添加了 `DELETE /chat/topics/{topicId}` API端点
+- 支持清理向量数据库和缓存中的相关数据
+
+### 技术实现
+
+1. **ChatService** - 添加 `deleteTopic()` 方法
+   - 验证话题所有权
+   - 删除话题下的所有消息
+   - 删除话题本身
+   - 清理向量数据库数据
+   - 清理缓存数据
+
+2. **VectorDbService** - 添加 `deleteTopicMessages()` 方法
+   - 删除指定话题的所有向量数据
+
+3. **ChatCacheService** - 添加 `clearTopicCache()` 方法
+   - 删除话题标题缓存
+   - 从历史记录中移除该话题的消息
+
+4. **ChatController** - 添加删除话题端点
+   - 导入 `Delete` 装饰器
+   - 实现 `deleteTopic()` 方法
+
+### 文件变更
+
+- `src/chat/services/chat.service.ts` - 新增删除话题逻辑
+- `src/chat/services/vector-db.service.ts` - 新增删除话题向量数据方法
+- `src/chat/services/chat-cache.service.ts` - 新增清理话题缓存方法
+- `src/chat/chat.controller.ts` - 新增删除话题API端点
+- `docs/CHAT_API.md` - 更新API文档
+- `test/delete-topic.http` - 新增测试文件
+
+### 安全特性
+
+- 验证话题所有权，防止删除其他用户的话题
+- 完整的错误处理和日志记录
+- 事务性删除，确保数据一致性

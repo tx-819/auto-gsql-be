@@ -1,0 +1,11 @@
+### 删除话题
+DELETE http://localhost:3000/chat/topics/1
+Authorization: Bearer {{authToken}}
+
+### 删除不存在的話題
+DELETE http://localhost:3000/chat/topics/999
+Authorization: Bearer {{authToken}}
+
+### 删除其他用户的话题（应该失败）
+DELETE http://localhost:3000/chat/topics/2
+Authorization: Bearer {{authToken}} 

@@ -149,4 +149,29 @@ export class ChatCacheService {
       this.logger.error('Failed to clear user history', error);
     }
   }
+
+  async clearTopicCache(userId: number, topicId: number): Promise<void> {
+    try {
+      // 删除话题标题缓存
+      const titleKey = this.getTitleKey(userId, topicId);
+      await this.redisService.del(titleKey);
+
+      // 从历史记录中移除该话题的消息
+      const historyKey = this.getHistoryKey(userId);
+      const history = await this.redisService.get<CachedMessage[]>(historyKey);
+
+      if (history) {
+        const filteredHistory = history.filter(
+          (msg) => msg.topicId !== topicId,
+        );
+        await this.redisService.set(
+          historyKey,
+          filteredHistory,
+          7 * 24 * 60 * 60,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to clear topic cache', error);
+    }
+  }
 }

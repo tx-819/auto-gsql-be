@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -102,6 +103,15 @@ export class ChatController {
     @Param('topicId') topicId: number,
   ): Promise<{ success: boolean }> {
     await this.chatService.archiveTopic(topicId, req.user.id);
+    return { success: true };
+  }
+
+  @Delete('topics/:topicId')
+  async deleteTopic(
+    @Request() req: { user: AuthenticatedUser },
+    @Param('topicId') topicId: number,
+  ): Promise<{ success: boolean }> {
+    await this.chatService.deleteTopic(topicId, req.user.id);
     return { success: true };
   }
 }
