@@ -85,7 +85,7 @@ export class ChatService {
     dto: SendMessageDto,
     subscriber: {
       next: (value: StreamChatResponse) => void;
-      error: (error: any) => void;
+      error: (error: unknown) => void;
       complete: () => void;
     },
   ): Promise<void> {

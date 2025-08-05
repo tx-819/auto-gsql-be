@@ -1,0 +1,136 @@
+### Database Connection API Tests
+
+### Create a new database connection
+POST http://localhost:3000/database/connections
+Content-Type: application/json
+
+{
+  "name": "Test MySQL Database",
+  "dbType": "mysql",
+  "host": "localhost",
+  "port": 3306,
+  "username": "root",
+  "password": "password",
+  "databaseName": "testdb"
+}
+
+### Get all database connections
+GET http://localhost:3000/database/connections
+
+### Get database connection by ID
+GET http://localhost:3000/database/connections/1
+
+### Update database connection
+PUT http://localhost:3000/database/connections/1
+Content-Type: application/json
+
+{
+  "name": "Updated MySQL Database",
+  "host": "localhost",
+  "port": 3306,
+  "username": "root",
+  "password": "newpassword",
+  "databaseName": "updateddb"
+}
+
+### Delete database connection
+DELETE http://localhost:3000/database/connections/1
+
+### Database Table API Tests
+
+### Create a new database table
+POST http://localhost:3000/database/tables
+Content-Type: application/json
+
+{
+  "connectionId": 1,
+  "tableName": "users",
+  "tableComment": "User information table"
+}
+
+### Get tables by connection ID
+GET http://localhost:3000/database/connections/1/tables
+
+### Get table by ID
+GET http://localhost:3000/database/tables/1
+
+### Update table
+PUT http://localhost:3000/database/tables/1
+Content-Type: application/json
+
+{
+  "tableName": "updated_users",
+  "tableComment": "Updated user information table"
+}
+
+### Delete table
+DELETE http://localhost:3000/database/tables/1
+
+### Database Column API Tests
+
+### Create a new database column
+POST http://localhost:3000/database/columns
+Content-Type: application/json
+
+{
+  "tableId": 1,
+  "columnName": "id",
+  "dataType": "BIGINT",
+  "isNullable": false,
+  "isPrimary": true,
+  "columnComment": "Primary key"
+}
+
+### Get columns by table ID
+GET http://localhost:3000/database/tables/1/columns
+
+### Get column by ID
+GET http://localhost:3000/database/columns/1
+
+### Update column
+PUT http://localhost:3000/database/columns/1
+Content-Type: application/json
+
+{
+  "columnName": "user_id",
+  "dataType": "BIGINT",
+  "isNullable": false,
+  "isPrimary": true,
+  "columnComment": "Updated primary key"
+}
+
+### Delete column
+DELETE http://localhost:3000/database/columns/1
+
+### Logic Foreign Key API Tests
+
+### Create a new logic foreign key
+POST http://localhost:3000/database/foreign-keys
+Content-Type: application/json
+
+{
+  "sourceTableId": 1,
+  "sourceColumnName": "user_id",
+  "targetTableId": 2,
+  "targetColumnName": "id",
+  "relationType": "one-to-many"
+}
+
+### Get foreign keys by table ID
+GET http://localhost:3000/database/tables/1/foreign-keys
+
+### Get foreign key by ID
+GET http://localhost:3000/database/foreign-keys/1
+
+### Update foreign key
+PUT http://localhost:3000/database/foreign-keys/1
+Content-Type: application/json
+
+{
+  "sourceColumnName": "updated_user_id",
+  "targetColumnName": "updated_id",
+  "relationType": "one-to-one"
+}
+
+### Delete foreign key
+DELETE http://localhost:3000/database/foreign-keys/1 

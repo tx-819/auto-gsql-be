@@ -12,6 +12,7 @@ import { ChatModule } from './chat/chat.module';
 import { TransformInterceptor } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RedisService } from './common/services/redis.service';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { RedisService } from './common/services/redis.service';
     AuthModule,
     UsersModule,
     ChatModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [

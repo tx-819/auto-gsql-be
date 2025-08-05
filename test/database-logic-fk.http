@@ -1,0 +1,113 @@
+### 测试逻辑外键功能
+
+### 1. 创建数据库连接
+POST http://localhost:3000/database/connections
+Content-Type: application/json
+
+{
+  "name": "测试数据库",
+  "dbType": "mysql",
+  "host": "localhost",
+  "port": 3306,
+  "username": "root",
+  "password": "password",
+  "databaseName": "test_db"
+}
+
+### 2. 获取所有连接
+GET http://localhost:3000/database/connections
+
+### 3. 创建表
+POST http://localhost:3000/database/tables
+Content-Type: application/json
+
+{
+  "connectionId": 1,
+  "tableName": "users",
+  "tableComment": "用户表"
+}
+
+### 4. 创建另一个表
+POST http://localhost:3000/database/tables
+Content-Type: application/json
+
+{
+  "connectionId": 1,
+  "tableName": "orders",
+  "tableComment": "订单表"
+}
+
+### 5. 创建列
+POST http://localhost:3000/database/columns
+Content-Type: application/json
+
+{
+  "tableId": 1,
+  "columnName": "id",
+  "dataType": "int",
+  "isPrimary": true,
+  "columnComment": "用户ID"
+}
+
+### 6. 创建另一个列
+POST http://localhost:3000/database/columns
+Content-Type: application/json
+
+{
+  "tableId": 1,
+  "columnName": "name",
+  "dataType": "varchar(100)",
+  "isNullable": false,
+  "columnComment": "用户姓名"
+}
+
+### 7. 创建订单表的列
+POST http://localhost:3000/database/columns
+Content-Type: application/json
+
+{
+  "tableId": 2,
+  "columnName": "id",
+  "dataType": "int",
+  "isPrimary": true,
+  "columnComment": "订单ID"
+}
+
+### 8. 创建订单表的用户ID列
+POST http://localhost:3000/database/columns
+Content-Type: application/json
+
+{
+  "tableId": 2,
+  "columnName": "user_id",
+  "dataType": "int",
+  "isNullable": false,
+  "columnComment": "用户ID"
+}
+
+### 9. 创建逻辑外键关系
+POST http://localhost:3000/database/foreign-keys
+Content-Type: application/json
+
+{
+  "sourceTableId": 2,
+  "sourceColumnName": "user_id",
+  "targetTableId": 1,
+  "targetColumnName": "id",
+  "relationType": "many-to-one"
+}
+
+### 10. 获取连接及其关联的表
+GET http://localhost:3000/database/connections/1/with-tables
+
+### 11. 获取表及其关联的列和外键关系
+GET http://localhost:3000/database/tables/1/with-relations
+
+### 12. 获取表及其关联的列和外键关系
+GET http://localhost:3000/database/tables/2/with-relations
+
+### 13. 获取表的外键关系
+GET http://localhost:3000/database/tables/1/foreign-keys
+
+### 14. 获取表的外键关系
+GET http://localhost:3000/database/tables/2/foreign-keys 

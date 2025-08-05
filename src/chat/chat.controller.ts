@@ -69,9 +69,9 @@ export class ChatController {
         const data = JSON.stringify(response);
         res.write(`data: ${data}\n\n`);
       },
-      error: (error: Error) => {
+      error: (error: unknown) => {
         const errorData = JSON.stringify({
-          error: error?.message || 'Unknown error',
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
         res.write(`data: ${errorData}\n\n`);
         res.end();
