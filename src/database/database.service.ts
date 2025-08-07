@@ -10,6 +10,7 @@ import {
 } from './entities';
 import { GenerateDatabaseMetadataDto } from './dto';
 import { TableDataVo } from './vo/tableData.vo';
+import { OpenAiService } from '../chat/services/openai.service';
 
 @Injectable()
 export class DatabaseService {
@@ -23,6 +24,7 @@ export class DatabaseService {
     @InjectRepository(DbLogicForeignKey)
     private dbLogicForeignKeyRepository: Repository<DbLogicForeignKey>,
     private dataSource: DataSource,
+    private openAiService: OpenAiService,
   ) {}
 
   // Database Connection methods
@@ -245,6 +247,180 @@ export class DatabaseService {
     return tablesWithColumns;
   }
 
+  async generateLogicForeignKeysWithAI(
+    tablesWithColumns: TableDataVo[],
+    aiConfig: { apiKey: string; baseURL?: string; model?: string },
+  ): Promise<void> {
+    try {
+      // 构建数据库结构描述
+      const databaseStructure = tablesWithColumns
+        .map((table) => {
+          const columns = table.columns.map((col) => col.columnName).join(', ');
+          return `${table.tableName}(${columns})`;
+        })
+        .join('\n');
+
+      // 构建提示词
+      const prompt = `我有以下数据库结构：
+${databaseStructure}
+
+请分析表之间的关系，识别可能的外键关系。请返回 JSON 格式的逻辑外键数组：
+[
+  {"sourceTableName":"表名","sourceColumnName":"列名","targetTableName":"目标表名","targetColumnName":"目标列名","relationType":"关系类型"}
+]
+
+关系类型说明：
+- one-to-one: 一对一关系，源表中的一条记录对应目标表中的一条记录
+- many-to-one: 多对一关系，源表中的多条记录对应目标表中的一条记录（最常见的外键关系）
+- many-to-many: 多对多关系，通过中间表连接两个表
+
+关系方向判断规则：
+1. 如果源表有外键列指向目标表，关系方向是：源表 -> 目标表
+2. 关系类型根据业务逻辑判断：
+   - 一个主表可以有多个子表记录：主表 -> 子表 (many-to-one)
+   - 一个子表只能属于一个主表：子表 -> 主表 (many-to-one)
+   - 一个分类可以有多个项目：分类表 -> 项目表 (many-to-one)
+   - 一个项目只能属于一个分类：项目表 -> 分类表 (many-to-one)
+
+重要：关系方向是从"多"的一方指向"一"的一方！
+- 订单表.user_id 指向 用户表.id：订单表 -> 用户表 (many-to-one)
+- 订单表.产品_id 指向 产品表.id：订单表 -> 产品表 (many-to-one)
+- 评论表.文章_id 指向 文章表.id：评论表 -> 文章表 (many-to-one)
+- 学生表.班级_id 指向 班级表.id：学生表 -> 班级表 (many-to-one)
+
+多对多关系识别：
+- 如果存在中间表，且中间表只有两个外键列（指向两个不同的表），则这两个表是多对多关系
+- 例如：用户角色关联表连接用户表和角色表
+
+外键列识别规则：
+1. 标准命名：以 "_id" 结尾的列名
+   - user_id: 指向用户表.id
+   - product_id: 指向产品表.id
+   - category_id: 指向分类表.id
+   - order_id: 指向订单表.id
+
+2. 特殊命名：需要根据列名含义判断
+   - source_id: 指向源表.id
+   - target_id: 指向目标表.id
+   - parent_id: 指向父表.id
+   - owner_id: 指向所有者表.id
+   - creator_id: 指向创建者表.id
+   - manager_id: 指向管理者表.id
+
+3. 复合外键：一个表可能有多个外键指向同一个目标表
+   - 例如：关系表的 source_id 和 target_id 都指向同一个主表.id
+   - 例如：订单表的 buyer_id 和 seller_id 都指向用户表.id
+
+注意：
+1. 通常外键列名以 "_id" 结尾，但也有可能不是，请仔细分析表结构与列名
+2. 目标列通常是目标表的 "id" 列
+3. 只返回确实存在关系的表，不要猜测
+4. 确保返回的是有效的 JSON 格式
+5. 关系方向要正确：从有外键的表指向被引用的表
+6. 仔细分析每个表的每一列，寻找可能的外键关系
+7. 注意复合外键：一个表可能有多个外键指向同一个目标表`;
+
+      // 调用AI服务
+      const response = await this.openAiService.generateResponse(
+        [{ role: 'user', content: prompt }],
+        aiConfig,
+        `你是一个数据库关系分析专家，擅长识别表之间的外键关系。
+
+关键规则：
+1. 关系方向：从"多"的一方指向"一"的一方
+2. 外键列在"多"的一方，主键在"一"的一方
+3. 关系类型：
+   - many-to-one: 多个记录指向一个记录（最常见的外键关系）
+   - one-to-one: 一对一关系
+   - many-to-many: 通过中间表连接
+
+外键识别要点：
+1. 不要遗漏任何外键关系，包括非标准命名的外键列
+2. 特别注意复合外键（一个表有多个外键指向同一个目标表）
+3. 仔细分析每个表的每一列，寻找可能的外键关系
+4. 识别各种业务场景下的外键关系（用户、订单、产品、分类等）
+
+请仔细分析表结构，返回准确的外键关系。`,
+      );
+
+      // 解析AI返回的JSON
+      let foreignKeyRelations: Array<{
+        sourceTableName: string;
+        sourceColumnName: string;
+        targetTableName: string;
+        targetColumnName: string;
+        relationType: RelationType;
+      }> = [];
+
+      try {
+        // 尝试从响应中提取JSON
+        const jsonMatch = response.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          foreignKeyRelations = JSON.parse(jsonMatch[0]) as Array<{
+            sourceTableName: string;
+            sourceColumnName: string;
+            targetTableName: string;
+            targetColumnName: string;
+            relationType: RelationType;
+          }>;
+        } else {
+          // 如果没有找到JSON数组，尝试直接解析整个响应
+          foreignKeyRelations = JSON.parse(response) as Array<{
+            sourceTableName: string;
+            sourceColumnName: string;
+            targetTableName: string;
+            targetColumnName: string;
+            relationType: RelationType;
+          }>;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError);
+      }
+
+      // 验证并转换为DbLogicForeignKey对象
+
+      for (const relation of foreignKeyRelations) {
+        // 验证关系是否有效
+        const sourceTable = tablesWithColumns.find(
+          (t) => t.tableName === relation.sourceTableName,
+        );
+        const targetTable = tablesWithColumns.find(
+          (t) => t.tableName === relation.targetTableName,
+        );
+
+        if (sourceTable && targetTable) {
+          const sourceColumn = sourceTable.columns.find(
+            (c) => c.columnName === relation.sourceColumnName,
+          );
+          const targetColumn = targetTable.columns.find(
+            (c) => c.columnName === relation.targetColumnName,
+          );
+
+          if (sourceColumn && targetColumn) {
+            // 判断关系类型
+            const relationType: RelationType = relation.relationType;
+
+            // 如果relationType属于RelationType枚举，则保存到数据库
+            if (Object.values(RelationType).includes(relationType)) {
+              // 保存到数据库
+              await this.dbLogicForeignKeyRepository.save({
+                sourceTableId: sourceTable.id,
+                sourceTableName: relation.sourceTableName,
+                sourceColumnName: sourceColumn.columnName,
+                targetTableId: targetTable.id,
+                targetTableName: relation.targetTableName,
+                targetColumnName: targetColumn.columnName,
+                relationType,
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to generate logic foreign keys with AI:', error);
+    }
+  }
+
   async generateLogicForeignKeys(
     connectionId: number,
     uniqueCols: string[],
@@ -297,7 +473,7 @@ export class DatabaseService {
 
             const relationType: RelationType = isUnique
               ? RelationType.ONE_TO_ONE
-              : RelationType.ONE_TO_MANY;
+              : RelationType.MANY_TO_ONE;
 
             // 检查是否已存在相同的外键关系
             const existingFk = await transactionalEntityManager.find(
@@ -429,6 +605,7 @@ export class DatabaseService {
       connectionId,
       tables: tableInfos,
       uniqueCols,
+      aiConfig,
     } = generateDatabaseMetadataDto;
 
     // 输入验证 - 防止恶意数据
@@ -520,9 +697,13 @@ export class DatabaseService {
       }
     });
 
-    await this.generateLogicForeignKeys(connectionId, uniqueCols);
-
     const tablesWithColumns = await this.getTablesWithColumns(connectionId);
+
+    if (aiConfig) {
+      await this.generateLogicForeignKeysWithAI(tablesWithColumns, aiConfig);
+    } else {
+      await this.generateLogicForeignKeys(connectionId, uniqueCols);
+    }
 
     const foreignKeys =
       await this.findLogicForeignKeysByConnectionId(connectionId);

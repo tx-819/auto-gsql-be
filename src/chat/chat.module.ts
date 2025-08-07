@@ -21,6 +21,6 @@ import { EmbeddingService } from './services/embedding.service';
     RedisService,
     EmbeddingService,
   ],
-  exports: [ChatService],
+  exports: [ChatService, OpenAiService],
 })
 export class ChatModule {}

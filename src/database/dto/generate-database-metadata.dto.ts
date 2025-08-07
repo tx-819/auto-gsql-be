@@ -8,8 +8,10 @@ import {
   ValidateNested,
   ArrayMinSize,
   IsPositive,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { AiConfig } from '../../chat/services/openai.service';
 
 /**
  * 数据库列信息验证DTO
@@ -80,4 +82,9 @@ export class GenerateDatabaseMetadataDto {
   @IsArray()
   @IsString({ each: true })
   uniqueCols: string[];
+
+  /** AI配置 */
+  @IsObject()
+  @IsOptional()
+  aiConfig: AiConfig | null = null;
 }

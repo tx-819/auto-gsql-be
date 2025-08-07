@@ -7,7 +7,7 @@ export interface ChatMessage {
   content: string;
 }
 
-export interface OpenAIConfig {
+export interface AiConfig {
   apiKey: string;
   baseURL?: string;
   model?: string;
@@ -22,7 +22,7 @@ export interface StreamResponse {
 export class OpenAiService {
   private readonly logger = new Logger(OpenAiService.name);
 
-  private createOpenAI(config: OpenAIConfig): OpenAI {
+  private createOpenAI(config: AiConfig): OpenAI {
     const openAIConfig: {
       apiKey: string;
       baseURL?: string;
@@ -39,7 +39,7 @@ export class OpenAiService {
 
   async generateResponse(
     messages: ChatMessage[],
-    config: OpenAIConfig,
+    config: AiConfig,
     systemPrompt?: string,
   ): Promise<string> {
     try {
@@ -64,7 +64,7 @@ export class OpenAiService {
 
   generateResponseStream(
     messages: ChatMessage[],
-    config: OpenAIConfig,
+    config: AiConfig,
     systemPrompt?: string,
   ): Observable<StreamResponse> {
     return new Observable((subscriber) => {
@@ -110,7 +110,7 @@ export class OpenAiService {
 
   async generateTopicTitle(
     userMessages: string[],
-    config: OpenAIConfig,
+    config: AiConfig,
   ): Promise<string> {
     try {
       const openai = this.createOpenAI(config);

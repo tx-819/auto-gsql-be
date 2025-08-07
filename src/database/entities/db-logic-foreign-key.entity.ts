@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 export enum RelationType {
   ONE_TO_ONE = 'one-to-one',
-  ONE_TO_MANY = 'one-to-many',
+  MANY_TO_ONE = 'many-to-one',
   MANY_TO_MANY = 'many-to-many',
 }
 
@@ -33,7 +33,7 @@ export class DbLogicForeignKey {
     name: 'relation_type',
     type: 'enum',
     enum: RelationType,
-    default: RelationType.ONE_TO_MANY,
+    default: RelationType.MANY_TO_ONE,
   })
   relationType: RelationType;
 }
