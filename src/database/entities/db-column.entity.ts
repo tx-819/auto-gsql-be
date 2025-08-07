@@ -25,6 +25,9 @@ export class DbColumn {
   @Column({ name: 'is_primary', type: 'boolean', nullable: true })
   isPrimary: boolean;
 
+  @Column({ name: 'is_foreign_key', type: 'boolean', nullable: true })
+  isForeignKey: boolean;
+
   @Column({
     name: 'column_comment',
     type: 'varchar',

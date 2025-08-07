@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { DatabaseService } from './database.service';
 import { DbConnection, DbTable, DbColumn, DbLogicForeignKey } from './entities';
@@ -15,6 +16,7 @@ import {
   CreateTableDto,
   CreateColumnDto,
   CreateForeignKeyDto,
+  GenerateDatabaseMetadataDto,
 } from './dto';
 
 /**
@@ -51,7 +53,7 @@ export class DatabaseController {
    * @param id 连接ID
    * @returns 连接信息
    */
-  @Get('connections/:id')
+  @Get('connection/:id')
   async findConnectionById(@Param('id', ParseIntPipe) id: number) {
     return await this.databaseService.findConnectionById(id);
   }
@@ -61,7 +63,7 @@ export class DatabaseController {
    * @param id 连接ID
    * @returns 连接信息和关联表列表
    */
-  @Get('connections/:id/with-tables')
+  @Get('connection/:id/with-tables')
   async getConnectionWithTables(@Param('id', ParseIntPipe) id: number) {
     return await this.databaseService.getConnectionWithTables(id);
   }
@@ -273,5 +275,19 @@ export class DatabaseController {
   async deleteLogicForeignKey(@Param('id', ParseIntPipe) id: number) {
     await this.databaseService.deleteLogicForeignKey(id);
     return { message: 'Foreign key deleted successfully' };
+  }
+
+  @Post('generate-database-metadata')
+  async generateDatabaseMetadata(
+    @Body() generateDatabaseMetadataDto: GenerateDatabaseMetadataDto,
+  ) {
+    return await this.databaseService.generateDatabaseMetadata(
+      generateDatabaseMetadataDto,
+    );
+  }
+
+  @Get('tables-with-columns')
+  async getTablesWithColumns(@Query('connectionId') connectionId: number) {
+    return await this.databaseService.getTablesWithColumns(connectionId);
   }
 }

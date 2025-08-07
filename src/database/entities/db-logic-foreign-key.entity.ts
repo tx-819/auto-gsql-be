@@ -14,11 +14,17 @@ export class DbLogicForeignKey {
   @Column({ name: 'source_table_id', type: 'bigint' })
   sourceTableId: number;
 
+  @Column({ name: 'source_table_name', type: 'varchar', length: 100 })
+  sourceTableName: string;
+
   @Column({ name: 'source_column_name', type: 'varchar', length: 100 })
   sourceColumnName: string;
 
   @Column({ name: 'target_table_id', type: 'bigint' })
   targetTableId: number;
+
+  @Column({ name: 'target_table_name', type: 'varchar', length: 100 })
+  targetTableName: string;
 
   @Column({ name: 'target_column_name', type: 'varchar', length: 100 })
   targetColumnName: string;

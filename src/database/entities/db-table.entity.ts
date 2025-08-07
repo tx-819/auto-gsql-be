@@ -16,6 +16,9 @@ export class DbTable {
   @Column({ name: 'table_name', type: 'varchar', length: 100 })
   tableName: string;
 
+  @Column({ name: 'primary_key', type: 'varchar', length: 50, nullable: true })
+  primaryKey: string;
+
   @Column({
     name: 'table_comment',
     type: 'varchar',

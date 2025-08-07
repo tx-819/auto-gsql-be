@@ -9,5 +9,9 @@ export class CreateTableDto {
 
   @IsString()
   @IsOptional()
+  primaryKey?: string;
+
+  @IsString()
+  @IsOptional()
   tableComment?: string;
 }
