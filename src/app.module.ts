@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
-import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_FILTER, APP_PIPE } from '@nestjs/core';
 import * as redisStore from 'cache-manager-redis-store';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -60,6 +60,16 @@ import { DatabaseModule } from './database/database.module';
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
+    },
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        transform: true, // 自动转换类型
+        whitelist: true, // 过滤掉不在 DTO 中定义的属性
+        forbidNonWhitelisted: false, // 不拒绝额外属性，只是过滤掉
+        skipMissingProperties: false, // 不跳过缺失的属性
+        disableErrorMessages: false, // 启用错误消息
+      }),
     },
   ],
   exports: [RedisService],

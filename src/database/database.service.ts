@@ -320,6 +320,8 @@ ${databaseStructure}
 6. 仔细分析每个表的每一列，寻找可能的外键关系
 7. 注意复合外键：一个表可能有多个外键指向同一个目标表`;
 
+      console.log('prompt', prompt);
+
       // 调用AI服务
       const response = await this.openAiService.generateResponse(
         [{ role: 'user', content: prompt }],
@@ -342,6 +344,8 @@ ${databaseStructure}
 
 请仔细分析表结构，返回准确的外键关系。`,
       );
+
+      console.log('response', response);
 
       // 解析AI返回的JSON
       let foreignKeyRelations: Array<{

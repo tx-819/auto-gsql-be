@@ -51,7 +51,7 @@ export class OpenAiService {
       const response = await openai.chat.completions.create({
         model: config.model || 'gpt-3.5-turbo',
         messages: chatMessages,
-        max_tokens: 1000,
+        max_tokens: 5000,
         temperature: 0.7,
       });
 

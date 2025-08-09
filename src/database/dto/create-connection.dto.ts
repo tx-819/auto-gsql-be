@@ -1,4 +1,5 @@
 import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 import { DbType } from '../entities/db-connection.entity';
 
 export class CreateConnectionDto {
@@ -13,6 +14,7 @@ export class CreateConnectionDto {
   host: string;
 
   @IsNumber()
+  @Type(() => Number)
   port: number;
 
   @IsString()

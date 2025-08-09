@@ -55,8 +55,8 @@ class DbTableInfoDto {
   columns: DbColumnInfoDto[];
 
   @IsString()
-  @IsNotEmpty()
-  primaryKey: string;
+  @IsOptional()
+  primaryKey?: string;
 }
 
 /**

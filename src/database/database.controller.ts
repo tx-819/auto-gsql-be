@@ -290,4 +290,13 @@ export class DatabaseController {
   async getTablesWithColumns(@Query('connectionId') connectionId: number) {
     return await this.databaseService.getTablesWithColumns(connectionId);
   }
+
+  @Get('foreign-keys-by-connection-id')
+  async findLogicForeignKeysByConnectionId(
+    @Query('connectionId') connectionId: number,
+  ) {
+    return await this.databaseService.findLogicForeignKeysByConnectionId(
+      connectionId,
+    );
+  }
 }
